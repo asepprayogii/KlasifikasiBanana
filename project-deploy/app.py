@@ -1,10 +1,9 @@
-# predict_rebuilt.py
-import sys
 import os
+import tkinter as tk
+from tkinter import filedialog, messagebox, Label
+from PIL import Image, ImageTk
 import numpy as np
-from PIL import Image
 import tensorflow as tf
-import matplotlib.pyplot as plt
 
 # --- Bangun ulang arsitektur model yang SAMA persis ---
 def create_model():
@@ -22,53 +21,92 @@ def create_model():
     ])
     return model
 
+# Muat model sekali saat aplikasi dibuka (lebih efisien)
+print("Memuat model...")
+model = create_model()
+model.load_weights("model/banana_cnn_model.h5")
+print("Model siap digunakan.")
+
 def predict_image(image_path):
-    print("Membangun ulang model...")
-    model = create_model()
-    
-    # Muat BOBOT saja (bukan arsitektur)
-    print("Memuat bobot model...")
-    model.load_weights("model/banana_cnn_model.h5")
-    
     # Proses gambar
-    print(f"Membaca gambar: {image_path}")
     image = Image.open(image_path).convert("RGB")
     image_resized = image.resize((128, 128))
     image_array = np.array(image_resized) / 255.0
     image_batch = np.expand_dims(image_array, axis=0)
 
     # Prediksi
-    print("Melakukan prediksi...")
     pred = model.predict(image_batch, verbose=0)[0][0]
     confidence = max(pred, 1 - pred)
 
     if pred > 0.5:
         result = "PISANG BUSUK"
-        color = "merah"
+        color = "red"
     else:
         result = "PISANG SEGAR"
-        color = "hijau"
+        color = "green"
 
-    print("\n" + "="*50)
-    print(f"🎯 HASIL: {result}")
-    print(f"✅ Confidence: {confidence:.2%}")
-    print("="*50)
+    return result, confidence, color
 
-    # Tampilkan gambar
-    plt.figure(figsize=(6, 6))
-    plt.imshow(image)
-    plt.title(f"{result} (Confidence: {confidence:.2%})")
-    plt.axis('off')
-    plt.show()
+def upload_image():
+    file_path = filedialog.askopenfilename(
+        title="Pilih Gambar Pisang",
+        filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp")]
+    )
+    if not file_path:
+        return
 
+    if not os.path.exists(file_path):
+        messagebox.showerror("Error", "File tidak ditemukan!")
+        return
+
+    try:
+        # Prediksi
+        result, conf, color = predict_image(file_path)
+
+        # Tampilkan gambar (resize agar muat di GUI)
+        img = Image.open(file_path)
+        img.thumbnail((300, 300))  # Resize untuk tampilan GUI
+        img_tk = ImageTk.PhotoImage(img)
+
+        # Update tampilan
+        panel_image.config(image=img_tk)
+        panel_image.image = img_tk  # Simpan referensi agar tidak di-GC
+
+        label_result.config(text=f"Hasil: {result}", fg=color)
+        label_conf.config(text=f"Confidence: {conf:.2%}")
+
+    except Exception as e:
+        messagebox.showerror("Error Prediksi", f"Terjadi kesalahan:\n{str(e)}")
+
+# --- GUI dengan tkinter ---
+root = tk.Tk()
+root.title("Klasifikasi Pisang - Segar vs Busuk")
+root.geometry("500x600")
+root.resizable(False, False)
+
+# Judul
+title = tk.Label(root, text="📸 Deteksi Kondisi Pisang", font=("Arial", 16, "bold"))
+title.pack(pady=10)
+
+# Tombol Upload
+btn_upload = tk.Button(root, text="📁 Upload Gambar", command=upload_image, font=("Arial", 12), bg="#4CAF50", fg="white", padx=20, pady=5)
+btn_upload.pack(pady=10)
+
+# Panel untuk menampilkan gambar
+panel_image = Label(root, bg="white", relief="solid", width=300, height=300)
+panel_image.pack(pady=10)
+
+# Label hasil
+label_result = tk.Label(root, text="Hasil: -", font=("Arial", 14, "bold"))
+label_result.pack(pady=5)
+
+label_conf = tk.Label(root, text="Confidence: -", font=("Arial", 12))
+label_conf.pack(pady=5)
+
+# Catatan
+note = tk.Label(root, text="Model: CNN (Banana Fresh vs Rotten)", font=("Arial", 9), fg="gray")
+note.pack(side="bottom", pady=10)
+
+# Jalankan GUI
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Penggunaan: python predict_rebuilt.py <path_ke_gambar>")
-        sys.exit(1)
-
-    image_path = sys.argv[1]
-    if not os.path.exists(image_path):
-        print(f"❌ File tidak ditemukan: {image_path}")
-        sys.exit(1)
-
-    predict_image(image_path)
+    root.mainloop()
