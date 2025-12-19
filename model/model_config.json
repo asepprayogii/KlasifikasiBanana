@@ -1,0 +1,11 @@
+{
+    "class_names": [
+        "freshbanana",
+        "rottenbanana"
+    ],
+    "img_size": [
+        128,
+        128
+    ],
+    "threshold": 0.5
+}

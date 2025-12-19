@@ -1,0 +1,15 @@
+{
+    "class_names": [
+        "freshbanana",
+        "rottenbanana"
+    ],
+    "img_size": [
+        128,
+        128
+    ],
+    "batch_size": 32,
+    "class_weights": {
+        "0": 1.2031620553359683,
+        "1": 0.8555368184373243
+    }
+}
